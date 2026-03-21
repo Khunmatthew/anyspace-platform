@@ -1,14 +1,64 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { t } from '../i18n'
-import { properties } from '../data/mockData'
+import { supabase } from '../lib/supabase'
+import { mapProperty } from '../lib/mapProperty'
 
 export default function DetailPage({ lang }) {
   const { id } = useParams()
-  const property = properties.find(p => p.id === parseInt(id))
+  const [property, setProperty] = useState(null)
+  const [similar, setSimilar] = useState([])
+  const [loading, setLoading] = useState(true)
   const [activeImg, setActiveImg] = useState(0)
   const [inquirySubmitted, setInquirySubmitted] = useState(false)
-  const [formData, setFormData] = useState({ name: '', phone: '', email: '', message: '' })
+  const [submitting, setSubmitting] = useState(false)
+  const [formData, setFormData] = useState({ name: '', phone: '', email: '', wechat: '', message: '' })
+
+  useEffect(() => {
+    async function fetchProperty() {
+      setLoading(true)
+      const { data } = await supabase.from('properties').select('*').eq('id', id).single()
+      if (data) {
+        const mapped = mapProperty(data)
+        setProperty(mapped)
+        // fetch similar
+        const { data: sim } = await supabase.from('properties').select('*')
+          .eq('status', 'active').eq('type', data.type).neq('id', id).limit(3)
+        if (sim) setSimilar(sim.map(mapProperty))
+      }
+      setLoading(false)
+    }
+    fetchProperty()
+  }, [id])
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSubmitting(true)
+    await supabase.from('inquiries').insert({
+      property_id: id,
+      property_title: property?.title?.zh,
+      name: formData.name,
+      phone: formData.phone,
+      email: formData.email,
+      wechat: formData.wechat,
+      message: formData.message,
+    })
+    setSubmitting(false)
+    setInquirySubmitted(true)
+    setFormData({ name: '', phone: '', email: '', wechat: '', message: '' })
+    setTimeout(() => setInquirySubmitted(false), 4000)
+  }
+
+  if (loading) {
+    return (
+      <main className="detail-page">
+        <div className="container" style={{ textAlign: 'center', padding: '80px 0' }}>
+          <p style={{ fontSize: '32px', marginBottom: '16px' }}>⏳</p>
+          <p style={{ color: 'var(--text-light)' }}>{lang === 'zh' ? '加载中...' : 'Loading...'}</p>
+        </div>
+      </main>
+    )
+  }
 
   if (!property) {
     return (
@@ -24,14 +74,6 @@ export default function DetailPage({ lang }) {
     )
   }
 
-  const similar = properties.filter(p => p.type === property.type && p.id !== property.id).slice(0, 3)
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setInquirySubmitted(true)
-    setTimeout(() => setInquirySubmitted(false), 3000)
-  }
-
   return (
     <main className="detail-page">
       <div className="container">
@@ -40,7 +82,7 @@ export default function DetailPage({ lang }) {
           <span>›</span>
           <Link to={`/listings/${property.type}`}>{t(lang, `types.${property.type}`)}</Link>
           <span>›</span>
-          <span>{property.title[lang] || property.title.zh}</span>
+          <span>{property.title[lang]}</span>
         </div>
 
         <div className="detail-grid">
@@ -51,21 +93,15 @@ export default function DetailPage({ lang }) {
               <img src={property.images[activeImg]} alt="" />
               <div className="gallery-thumbs">
                 {property.images.map((img, i) => (
-                  <img
-                    key={i}
-                    src={img}
-                    alt=""
-                    className={i === activeImg ? 'active' : ''}
-                    onClick={() => setActiveImg(i)}
-                  />
+                  <img key={i} src={img} alt="" className={i === activeImg ? 'active' : ''} onClick={() => setActiveImg(i)} />
                 ))}
               </div>
             </div>
 
             {/* Info */}
             <div className="detail-info">
-              <h1 className="detail-title">{property.title[lang] || property.title.zh}</h1>
-              <div className="detail-location">📍 {property.location[lang] || property.location.zh}</div>
+              <h1 className="detail-title">{property.title[lang]}</h1>
+              <div className="detail-location">📍 {property.location[lang]}</div>
 
               <div className="detail-price-row">
                 <div className="detail-price-item">
@@ -91,46 +127,28 @@ export default function DetailPage({ lang }) {
                 {property.btsNearby && <span className="detail-tag">🚆 {t(lang, 'listing.btsNearby')}</span>}
                 {property.canRegister && <span className="detail-tag">🏢 {t(lang, 'listing.canRegister')}</span>}
                 {property.parking > 0 && <span className="detail-tag">🅿️ {t(lang, 'listing.parking')}: {property.parking}</span>}
-                {property.bedrooms && <span className="detail-tag">🛏 {property.bedrooms} BR</span>}
-                {property.bathrooms && <span className="detail-tag">🚿 {property.bathrooms} BA</span>}
+                {property.floor && <span className="detail-tag">🏗️ {property.floor}</span>}
               </div>
             </div>
 
-            {/* Highlights */}
-            <div className="detail-info">
-              <div className="detail-section">
-                <h3>{t(lang, 'detail.highlights')}</h3>
-                <ul className="detail-list">
-                  {(property.highlights[lang] || property.highlights.zh).map((h, i) => (
-                    <li key={i}>{h}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="detail-section">
-                <h3>{lang === 'zh' ? '房源描述' : 'Description'}</h3>
-                <p>{property.description[lang] || property.description.zh}</p>
-              </div>
-
-              <div className="detail-section">
-                <h3>{t(lang, 'detail.suitableFor')}</h3>
-                <div className="detail-tags">
-                  {(property.suitableFor[lang] || property.suitableFor.zh).map((s, i) => (
-                    <span key={i} className="detail-tag">{s}</span>
-                  ))}
+            {/* Description */}
+            {property.description[lang] && (
+              <div className="detail-info">
+                <div className="detail-section">
+                  <h3>{lang === 'zh' ? '房源描述' : 'Description'}</h3>
+                  <p>{property.description[lang]}</p>
+                </div>
+                <div className="detail-section">
+                  <h3>{lang === 'zh' ? '租赁条款' : 'Lease Terms'}</h3>
+                  <ul className="detail-list">
+                    <li>{t(lang, 'detail.deposit')}: {property.deposit}</li>
+                    <li>{t(lang, 'listing.minLease')}: {property.minLease}</li>
+                    {property.managementFee > 0 && <li>{t(lang, 'detail.managementFee')}: ฿{property.managementFee}/sqm</li>}
+                    {property.floor && <li>{t(lang, 'listing.floor')}: {property.floor}</li>}
+                  </ul>
                 </div>
               </div>
-
-              <div className="detail-section">
-                <h3>{lang === 'zh' ? '租赁条款' : 'Lease Terms'}</h3>
-                <ul className="detail-list">
-                  <li>{t(lang, 'detail.deposit')}: {property.deposit}</li>
-                  <li>{t(lang, 'listing.minLease')}: {property.minLease}</li>
-                  {property.managementFee > 0 && <li>{t(lang, 'detail.managementFee')}: ฿{property.managementFee}/sqm</li>}
-                  <li>{t(lang, 'listing.floor')}: {property.floor}</li>
-                </ul>
-              </div>
-            </div>
+            )}
 
             {/* Similar */}
             {similar.length > 0 && (
@@ -145,7 +163,7 @@ export default function DetailPage({ lang }) {
                         <img src={p.image} alt="" />
                       </div>
                       <div className="property-card-body" style={{ padding: '12px' }}>
-                        <h3 style={{ fontSize: '14px' }}>{p.title[lang] || p.title.zh}</h3>
+                        <h3 style={{ fontSize: '14px' }}>{p.title[lang]}</h3>
                         <div className="property-price" style={{ fontSize: '16px' }}>
                           ฿{p.price.toLocaleString()} <small>/mo</small>
                         </div>
@@ -159,7 +177,6 @@ export default function DetailPage({ lang }) {
 
           {/* SIDEBAR */}
           <div className="detail-sidebar">
-            {/* Agent Card */}
             <div className="sidebar-card">
               <div className="agent-card">
                 <img src={property.agent.image} alt="" className="agent-avatar" />
@@ -169,10 +186,15 @@ export default function DetailPage({ lang }) {
                 </div>
               </div>
               <div className="contact-btns">
-                <button className="contact-btn primary">📞 {t(lang, 'detail.callNow')}</button>
-                <button className="contact-btn whatsapp">💬 {t(lang, 'detail.whatsapp')}</button>
-                <button className="contact-btn wechat">💚 {t(lang, 'detail.wechat')}</button>
-                <button className="contact-btn line">💚 {t(lang, 'detail.line')}</button>
+                {property.contact.phone && (
+                  <a href={`tel:${property.contact.phone}`} className="contact-btn primary">📞 {t(lang, 'detail.callNow')}</a>
+                )}
+                {property.contact.whatsapp && (
+                  <a href={`https://wa.me/${property.contact.whatsapp}`} className="contact-btn whatsapp" target="_blank" rel="noreferrer">💬 WhatsApp</a>
+                )}
+                {property.contact.wechat && (
+                  <button className="contact-btn wechat">💚 WeChat: {property.contact.wechat}</button>
+                )}
               </div>
             </div>
 
@@ -187,32 +209,14 @@ export default function DetailPage({ lang }) {
                 </div>
               ) : (
                 <form className="inquiry-form" onSubmit={handleSubmit}>
-                  <input
-                    type="text"
-                    placeholder={t(lang, 'detail.name')}
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                    required
-                  />
-                  <input
-                    type="tel"
-                    placeholder={t(lang, 'detail.phone')}
-                    value={formData.phone}
-                    onChange={e => setFormData({...formData, phone: e.target.value})}
-                    required
-                  />
-                  <input
-                    type="email"
-                    placeholder={t(lang, 'detail.email')}
-                    value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                  />
-                  <textarea
-                    placeholder={t(lang, 'detail.message')}
-                    value={formData.message}
-                    onChange={e => setFormData({...formData, message: e.target.value})}
-                  />
-                  <button type="submit" className="submit-btn">{t(lang, 'detail.submit')}</button>
+                  <input type="text" placeholder={t(lang, 'detail.name')} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
+                  <input type="tel" placeholder={t(lang, 'detail.phone')} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required />
+                  <input type="email" placeholder={t(lang, 'detail.email')} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                  <input type="text" placeholder="WeChat ID" value={formData.wechat} onChange={e => setFormData({...formData, wechat: e.target.value})} />
+                  <textarea placeholder={t(lang, 'detail.message')} value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})} />
+                  <button type="submit" className="submit-btn" disabled={submitting}>
+                    {submitting ? (lang === 'zh' ? '提交中...' : 'Submitting...') : t(lang, 'detail.submit')}
+                  </button>
                 </form>
               )}
             </div>

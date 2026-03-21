@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { t } from '../i18n'
-import { properties } from '../data/mockData'
+import { supabase } from '../lib/supabase'
+import { mapProperty } from '../lib/mapProperty'
 
 export default function ListingPage({ lang }) {
   const { type } = useParams()
@@ -10,22 +11,31 @@ export default function ListingPage({ lang }) {
   const [sortBy, setSortBy] = useState('newest')
   const [favorites, setFavorites] = useState([])
   const [filterType, setFilterType] = useState(type || searchParams.get('type') || '')
+  const [properties, setProperties] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  let filtered = properties
-  const activeType = filterType || type
-  if (activeType) {
-    filtered = filtered.filter(p => p.type === activeType)
-  }
-
-  if (sortBy === 'priceLow') filtered = [...filtered].sort((a,b) => a.price - b.price)
-  if (sortBy === 'priceHigh') filtered = [...filtered].sort((a,b) => b.price - a.price)
-  if (sortBy === 'areaLarge') filtered = [...filtered].sort((a,b) => b.size - a.size)
+  useEffect(() => {
+    async function fetchProperties() {
+      setLoading(true)
+      let query = supabase.from('properties').select('*').eq('status', 'active')
+      const activeType = filterType || type
+      if (activeType) query = query.eq('type', activeType)
+      if (sortBy === 'priceLow') query = query.order('price', { ascending: true })
+      else if (sortBy === 'priceHigh') query = query.order('price', { ascending: false })
+      else if (sortBy === 'areaLarge') query = query.order('size', { ascending: false })
+      else query = query.order('created_at', { ascending: false })
+      const { data, error } = await query
+      if (!error && data) setProperties(data.map(mapProperty))
+      setLoading(false)
+    }
+    fetchProperties()
+  }, [filterType, type, sortBy])
 
   const toggleFav = (id) => {
     setFavorites(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])
   }
 
-  const pageTitle = activeType ? t(lang, `types.${activeType}`) : (lang === 'zh' ? '全部房源' : 'All Listings')
+  const pageTitle = (filterType || type) ? t(lang, `types.${filterType || type}`) : (lang === 'zh' ? '全部房源' : 'All Listings')
 
   return (
     <main className="listing-page">
@@ -82,21 +92,13 @@ export default function ListingPage({ lang }) {
                 <option>{'> 300 sqm'}</option>
               </select>
             </div>
-            <div className="filter-group">
-              <label>{t(lang, 'listing.decoration')}</label>
-              <select>
-                <option>{lang === 'zh' ? '不限' : 'Any'}</option>
-                <option>{t(lang, 'listing.furnished')}</option>
-                <option>{t(lang, 'listing.unfurnished')}</option>
-              </select>
-            </div>
           </div>
         </div>
 
         {/* HEADER */}
         <div className="listing-header">
           <h2 style={{ fontSize: '20px', color: 'var(--primary-dark)' }}>
-            {pageTitle} — {filtered.length} {t(lang, 'listing.results')}
+            {pageTitle} — {loading ? '...' : `${properties.length} ${t(lang, 'listing.results')}`}
           </h2>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <select className="sort-select" value={sortBy} onChange={e => setSortBy(e.target.value)}>
@@ -109,25 +111,30 @@ export default function ListingPage({ lang }) {
         </div>
 
         {/* RESULTS */}
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-light)' }}>
+            <p style={{ fontSize: '32px', marginBottom: '16px' }}>⏳</p>
+            <p>{lang === 'zh' ? '加载中...' : 'Loading...'}</p>
+          </div>
+        ) : properties.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-light)' }}>
             <p style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</p>
             <p>{lang === 'zh' ? '暂无符合条件的房源，请调整筛选条件' : 'No listings found. Try adjusting your filters.'}</p>
           </div>
         ) : (
           <div className="property-grid">
-            {filtered.map(p => (
+            {properties.map(p => (
               <div key={p.id} className="property-card" onClick={() => navigate(`/property/${p.id}`)}>
                 <div className="property-card-img">
-                  <img src={p.image} alt={p.title[lang] || p.title.zh} />
+                  <img src={p.image} alt={p.title[lang]} />
                   <div className="property-type-badge">{t(lang, `types.${p.type}`)}</div>
                 </div>
                 <div className="property-card-body">
-                  <h3>{p.title[lang] || p.title.zh}</h3>
-                  <div className="property-location">📍 {p.location[lang] || p.location.zh}</div>
+                  <h3>{p.title[lang]}</h3>
+                  <div className="property-location">📍 {p.location[lang]}</div>
                   <div className="property-meta">
                     <span>{p.size} sqm</span>
-                    <span>{p.floor}</span>
+                    {p.floor && <span>{p.floor}</span>}
                     {p.furnished && <span>{t(lang, 'listing.furnished')}</span>}
                     {p.btsNearby && <span>🚆 BTS/MRT</span>}
                     {p.canRegister && <span>✅ {t(lang, 'listing.canRegister')}</span>}

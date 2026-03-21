@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { t } from '../i18n'
-import { properties, hotAreas, enterpriseServices, faqData } from '../data/mockData'
+import { hotAreas, enterpriseServices, faqData } from '../data/mockData'
+import { supabase } from '../lib/supabase'
+import { mapProperty } from '../lib/mapProperty'
 
 const categoryList = [
   { key: 'office', icon: '🏢' },
@@ -17,6 +19,12 @@ export default function HomePage({ lang }) {
   const [openFaq, setOpenFaq] = useState(null)
   const [searchText, setSearchText] = useState('')
   const [searchType, setSearchType] = useState('')
+  const [properties, setProperties] = useState([])
+
+  useEffect(() => {
+    supabase.from('properties').select('*').eq('status', 'active').order('created_at', { ascending: false }).limit(6)
+      .then(({ data }) => { if (data) setProperties(data.map(mapProperty)) })
+  }, [])
 
   const handleSearch = () => {
     const params = new URLSearchParams()
@@ -99,35 +107,41 @@ export default function HomePage({ lang }) {
         <div className="container">
           <h2 className="section-title">{t(lang, 'home.recommendedListings')}</h2>
           <p className="section-subtitle">{lang === 'zh' ? '精选优质房源，均经过平台验证' : 'Handpicked quality listings, all verified'}</p>
-          <div className="property-grid">
-            {properties.map(p => (
-              <div key={p.id} className="property-card" onClick={() => navigate(`/property/${p.id}`)}>
-                <div className="property-card-img">
-                  <img src={p.image} alt={p.title[lang] || p.title.zh} />
-                  <div className="property-type-badge">{t(lang, `types.${p.type}`)}</div>
-                </div>
-                <div className="property-card-body">
-                  <h3>{p.title[lang] || p.title.zh}</h3>
-                  <div className="property-location">📍 {p.location[lang] || p.location.zh}</div>
-                  <div className="property-meta">
-                    <span>{p.size} {t(lang, 'home.sqm')}</span>
-                    {p.furnished && <span>{t(lang, 'listing.furnished')}</span>}
-                    {p.btsNearby && <span>{t(lang, 'listing.btsNearby')}</span>}
-                    {p.canRegister && <span>{t(lang, 'listing.canRegister')}</span>}
+          {properties.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-light)' }}>
+              {lang === 'zh' ? '加载中...' : 'Loading...'}
+            </div>
+          ) : (
+            <div className="property-grid">
+              {properties.map(p => (
+                <div key={p.id} className="property-card" onClick={() => navigate(`/property/${p.id}`)}>
+                  <div className="property-card-img">
+                    <img src={p.image} alt={p.title[lang]} />
+                    <div className="property-type-badge">{t(lang, `types.${p.type}`)}</div>
                   </div>
-                  <div className="property-price">
-                    ฿{p.price.toLocaleString()} <small>{t(lang, 'home.perMonth')}</small>
+                  <div className="property-card-body">
+                    <h3>{p.title[lang]}</h3>
+                    <div className="property-location">📍 {p.location[lang]}</div>
+                    <div className="property-meta">
+                      <span>{p.size} {t(lang, 'home.sqm')}</span>
+                      {p.furnished && <span>{t(lang, 'listing.furnished')}</span>}
+                      {p.btsNearby && <span>{t(lang, 'listing.btsNearby')}</span>}
+                      {p.canRegister && <span>{t(lang, 'listing.canRegister')}</span>}
+                    </div>
+                    <div className="property-price">
+                      ฿{p.price.toLocaleString()} <small>{t(lang, 'home.perMonth')}</small>
+                    </div>
+                  </div>
+                  <div className="property-card-footer">
+                    <button className="btn-contact" onClick={e => { e.stopPropagation(); navigate(`/property/${p.id}`) }}>
+                      {t(lang, 'home.contactAgent')}
+                    </button>
+                    <button className="btn-favorite">♡</button>
                   </div>
                 </div>
-                <div className="property-card-footer">
-                  <button className="btn-contact" onClick={e => { e.stopPropagation(); navigate(`/property/${p.id}`) }}>
-                    {t(lang, 'home.contactAgent')}
-                  </button>
-                  <button className="btn-favorite">♡</button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
