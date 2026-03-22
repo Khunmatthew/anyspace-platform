@@ -176,8 +176,8 @@ export const properties = [
 
 export const hotAreas = [
   { id: 'sathorn', name: { zh: '沙吞 Sathorn', en: 'Sathorn' }, count: 128, image: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=400&h=300&fit=crop' },
-  { id: 'asoke', name: { zh: '阿索克 Asoke', en: 'Asoke' }, count: 95, image: 'https://images.unsplash.com/photo-1562602833-0f4ab2fc46e5?w=400&h=300&fit=crop' },
-  { id: 'rama9', name: { zh: '拉玛九 Rama 9', en: 'Rama 9' }, count: 112, image: 'https://images.unsplash.com/photo-1583334529924-74b9bcab4dc0?w=400&h=300&fit=crop' },
+  { id: 'asoke', name: { zh: '阿索克 Asoke', en: 'Asoke' }, count: 95, image: 'https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=400&h=300&fit=crop' },
+  { id: 'rama9', name: { zh: '拉玛九 Rama 9', en: 'Rama 9' }, count: 112, image: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=400&h=300&fit=crop' },
   { id: 'sukhumvit', name: { zh: '素坤逸 Sukhumvit', en: 'Sukhumvit' }, count: 203, image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=400&h=300&fit=crop' },
   { id: 'bangna', name: { zh: '邦纳 Bangna', en: 'Bangna' }, count: 67, image: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=400&h=300&fit=crop' },
   { id: 'silom', name: { zh: '是隆 Silom', en: 'Silom' }, count: 89, image: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&h=300&fit=crop' },

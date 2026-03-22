@@ -1126,6 +1126,34 @@ input, select, textarea { font-family: inherit; outline: none; }
 .agent-profile-card h3 { border: none; padding: 0; margin-bottom: 4px; }
 .agent-profile-card p { color: var(--text-light); font-size: 13px; }
 
+/* HAMBURGER & MOBILE MENU */
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+.mobile-menu {
+  background: var(--primary);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding: 8px 0;
+}
+.mobile-menu ul { list-style: none; margin: 0; padding: 0; }
+.mobile-menu ul li a {
+  display: block;
+  padding: 13px 20px;
+  color: rgba(255,255,255,0.85);
+  text-decoration: none;
+  font-size: 15px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  transition: background 0.2s;
+}
+.mobile-menu ul li a:hover { background: rgba(255,255,255,0.1); color: white; }
+
 /* RESPONSIVE */
 @media (max-width: 768px) {
   .hero h1 { font-size: 28px; }
@@ -1134,7 +1162,6 @@ input, select, textarea { font-family: inherit; outline: none; }
   .search-field { min-width: 100%; }
   .detail-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
-  .nav-list a { padding: 10px 14px; font-size: 13px; }
   .property-grid { grid-template-columns: 1fr; }
   .form-row { flex-direction: column; }
   .detail-gallery img { height: 250px; }
@@ -1143,4 +1170,14 @@ input, select, textarea { font-family: inherit; outline: none; }
   .admin-content { padding: 16px; }
   .admin-grid-2 { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Hide desktop nav, show hamburger */
+  .nav { display: none; }
+  .hamburger-btn { display: block; }
+
+  /* Compact header actions on mobile */
+  .header-actions { gap: 6px; }
+  .lang-switch { gap: 2px; }
+  .lang-switch button { padding: 4px 6px; font-size: 11px; }
+  .btn-publish { padding: 6px 10px; font-size: 12px; }
 }

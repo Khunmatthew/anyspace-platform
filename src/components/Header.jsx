@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { t } from '../i18n'
 
@@ -12,14 +13,16 @@ const typeIcons = {
 export default function Header({ lang, setLang, user, onLogout }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
 
-  // Hide header on admin and login pages
   if (location.pathname.startsWith('/admin') || location.pathname === '/login') return null
+
+  const closeMenu = () => setMenuOpen(false)
 
   return (
     <header className="header">
       <div className="container header-top">
-        <Link to="/" className="logo">
+        <Link to="/" className="logo" onClick={closeMenu}>
           Any<span>Space</span>
         </Link>
         <div className="header-actions">
@@ -28,10 +31,10 @@ export default function Header({ lang, setLang, user, onLogout }) {
             <button className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')}>EN</button>
             <button className={lang === 'th' ? 'active' : ''} onClick={() => setLang('th')}>ไทย</button>
           </div>
-          <button onClick={() => navigate('/publish')} className="btn-publish">{t(lang, 'nav.publish')}</button>
+          <button onClick={() => { navigate('/publish'); closeMenu() }} className="btn-publish">{t(lang, 'nav.publish')}</button>
           {user ? (
             <>
-              <button onClick={() => navigate('/admin')} style={{ fontSize: '13px' }}>
+              <button onClick={() => { navigate('/admin'); closeMenu() }} style={{ fontSize: '13px' }}>
                 {user.name} ({user.roleName})
               </button>
               <button onClick={onLogout} style={{ fontSize: '13px' }}>
@@ -39,10 +42,20 @@ export default function Header({ lang, setLang, user, onLogout }) {
               </button>
             </>
           ) : (
-            <button onClick={() => navigate('/login')}>{t(lang, 'nav.login')}</button>
+            <button onClick={() => { navigate('/login'); closeMenu() }}>{t(lang, 'nav.login')}</button>
           )}
+          {/* Hamburger */}
+          <button
+            className="hamburger-btn"
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? '✕' : '☰'}
+          </button>
         </div>
       </div>
+
+      {/* Desktop nav */}
       <nav className="nav">
         <div className="container">
           <ul className="nav-list">
@@ -57,6 +70,22 @@ export default function Header({ lang, setLang, user, onLogout }) {
           </ul>
         </div>
       </nav>
+
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="mobile-menu">
+          <ul>
+            <li><Link to="/" onClick={closeMenu}>{t(lang, 'nav.home')}</Link></li>
+            {Object.entries(typeIcons).map(([key, val]) => (
+              <li key={key}>
+                <Link to={val.path} onClick={closeMenu}>{val.icon} {t(lang, `types.${key}`)}</Link>
+              </li>
+            ))}
+            <li><Link to="/listings" onClick={closeMenu}>{t(lang, 'nav.services')}</Link></li>
+            <li><Link to="/listings" onClick={closeMenu}>{t(lang, 'nav.blog')}</Link></li>
+          </ul>
+        </div>
+      )}
     </header>
   )
 }
